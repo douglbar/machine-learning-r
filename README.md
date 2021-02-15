@@ -1,2 +1,2 @@
-# machine-learning-r
-Machine learning models in R
+# statistics-machine-learning-r
+Statistical analysis and machine learning models in R
