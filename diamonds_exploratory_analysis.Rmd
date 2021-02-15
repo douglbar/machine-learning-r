@@ -1,0 +1,227 @@
+---
+title: "Exploratory Data Analisys"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+defaultW <- getOption("warn") 
+options(warn = -1) 
+```
+
+## Exploring Diamonds dataset from ggplot2 package
+
+Diamonds is a dataset which contains prices and other attribues of almost 54,000 diamonds. In fact, they are 53,940 observations and 10 variables, shown below:
+
+| Variable | Description                                                                                |
+|----------|--------------------------------------------------------------------------------------------|
+| price    | price in America dollars (US$326–US$18,823)                                                |
+| carat    | diamond weight (0.2–5.01)                                                                  |
+| cut      | cut quality (Fair, Good, Very Good, Premium, Ideal)                                        |
+| color    | diamond color, from J (worst) to D (best)                                                  |
+| clarity  | measure of how clear the diamond is (I1 (worst), SI2, SI1, VS2, VS1, VVS2, VVS1, IF (best)) |
+| x        | length in mm (0–10.74)                                                                     |
+| y        | width in mm (0–58.9)                                                                       |
+| z        | depth in mm (0–31.8)                                                                       |
+| depth    | total depth in percent = z / mean(x, y) = 2 * z / (x + y) (43–79)                     |
+| table    | width of the diamond top related to the wider point (43–95)                                |
+
+### Read dataset
+
+Below we import the diamonds dataset inclued in ggplot2 package.
+
+```{r import}
+library(ggplot2)
+library(tidyverse)
+dsDiamonds <- diamonds
+```
+
+### Dataset structure
+
+The Diamond dataset has 10 attributes with the following structure:
+
+```{r structure}
+str(dsDiamonds,strict.width = "wrap",give.attr=FALSE)
+```
+
+As we can observe, the output of str() function matches the dataset description. There are 3 qualitative ordinal attributes, i.e. they are categorical variables with ordinal classification (in this case, from worst to best):
+
+- cut
+- color
+- clarity
+
+All other variables are numerical continuous.
+
+### Checking begin and end of the dataset
+
+```{r head_tail}
+head(dsDiamonds)
+tail(dsDiamonds)
+```
+
+Based on the output of head and tail functions the dataset seems to be according to the description.
+
+### Statistical summary
+
+Statistical summary with summary() fuction:
+
+```{r summary}
+summary(dsDiamonds)
+```
+
+Inspecting the attributes with summary function output:
+
+- price: matches the description with a minimum value of US$ 326 and maximum of US$ 18,823
+- carat: matches the description varying from 0.2 to 5.01
+- cut: matches the description varying from "Fair" to "Ideal" (no null values)
+- color: matches the description, there are no null values
+- clarity: seems to match the description; have to investigate "others"
+- x: matches the description varying from 0 to 10.74
+- y: matches the description varying from 0 to 58.9
+- z: matches the description varying from 0 to 31.8
+- depth: matches the description varying from 43 to 79
+- table: matches the description varying from 43 to 95
+
+The summary function gives us more insights in its output:
+
+- the carat attribute has a median very low comparing to the maximum value. This may indicate possible outliers as we can observe that 3rd quartile presents a value not so far from the median, i.e. up to 75% of the observations have an "expected" carat value with respect to the median;
+
+- we can observe the same behavior in the price attributes y and z (maximum values very above the median indicating possible outliers)
+
+Checking what values are part of "others" in the clarity output:
+
+```{r clarity_others}
+`%notin%` <- Negate(`%in%`)
+subset(dsDiamonds, dsDiamonds$clarity %notin% c("SI1","VS2","SI2","VS1","VVS2","VVS1")) %>%
+  summary()
+```
+
+As we can see, the output "others" is related to the total of classifications "I1" and "IF" for clarity. We can also verify there are no null values for this attribute.
+
+Checking the attributes x, y and z (lenght, width and depth), we encounter the following results:
+
+- total observations with x = 0:
+
+```{r x_zeros}
+sum(dsDiamonds$x == 0)
+```
+
+- total observations with y = 0:
+
+```{r y_zeros}
+sum(dsDiamonds$y == 0)
+```
+
+- total observations with z = 0:
+
+```{r z_zeros}
+sum(dsDiamonds$z == 0)
+```
+
+```{r subset_x_zeros}
+subset(dsDiamonds, dsDiamonds$z == 0)
+```
+
+We can verify that despite the zero values for these measure attributes, the other attributes possess significant values in the same observation. Hence, there are some absence of values for these attributes that may or may not impact the model. We could simply eliminate these lines or use some algorithm (such as KNN) to populate these values. 
+
+### Exploring price attribute
+
+Histogram of price attribute:
+
+```{r price_histogram}
+ggplot(data=dsDiamonds) + geom_histogram(binwidth = 500, aes(x=price)) + ggtitle("Diamond prices distribution") + xlab("Diamond prices in US$") + ylab("Frequency") + theme_minimal()
+```
+
+According to the histogram we have a peak in a very low value (below US$ 1,000) and a long tail to the right, with quantities reducing considerably above this price range.
+
+```{r price_zoom_peak}
+ggplot(data=dsDiamonds) + geom_histogram(binwidth = 50, aes(x=price)) + ggtitle("Diamond prices distribution") + xlab("Diamond prices in US$ - Binwidth 50") + ylab("Frequency") + theme_minimal() + xlim(0,2500)
+```
+
+We can better verify the values close to the peak when limiting the x value until US$ 2,500 and reducing the "binwidth". This way it is possible to visualize the distributions per price range.
+
+### Other attributes distribution
+
+Let us analyze the distribution of other attributes. First, the numerical attributes:
+
+```{r numeric_histograms}
+library(ggpubr)
+carat <- ggplot(data = dsDiamonds) + geom_histogram(aes(carat), binwidth = 0.01) + xlim(0,5) + labs_pubr() + theme_minimal()
+x <- ggplot(data = dsDiamonds) + geom_histogram(aes(x), binwidth = 0.1) + xlim(0,11) + labs_pubr() + theme_minimal()
+y <- ggplot(data = dsDiamonds) + geom_histogram(aes(y), binwidth = 0.1) + xlim(0,60) + labs_pubr() + theme_minimal()
+z <- ggplot(data = dsDiamonds) + geom_histogram(aes(z), binwidth = 0.1) + xlim(0,32) + labs_pubr() + theme_minimal()
+depth <- ggplot(data = dsDiamonds) + geom_histogram(aes(depth), binwidth = 0.5) + xlim(43,79) + labs_pubr() + theme_minimal()
+table <- ggplot(data = dsDiamonds) + geom_histogram(aes(table), binwidth = 1) + xlim(43,95) + labs_pubr() + theme_minimal()
+ggarrange(ncol = 3, nrow = 2, carat,x,y,z,depth,table) 
+```
+
+Based on the histograms we can conclude the following:
+
+- carat values are concentrated between 0.2 and 2.5 with more values around 0.3
+- there are more diamonds with length (x) between 4 and 9 mm with more values around 4
+- the width (y) seems to have more values between 4 and 9 mm
+- the depth (z) has more values between 5 and 11 mm
+- the total depth percentage (depth) has more values between 55 and 68
+- table has more values between 53 and 68
+
+Below we can see the distribution for the categorical attributes:
+
+```{r ordinal_bars}
+cut <- ggplot(data = dsDiamonds) + geom_bar(aes(cut)) + labs_pubr() + theme_minimal()
+color <- ggplot(data = dsDiamonds) + geom_bar(aes(color)) + labs_pubr() + theme_minimal()
+clarity <- ggplot(data = dsDiamonds) + geom_bar(aes(clarity)) + labs_pubr() + theme_minimal()
+ggarrange(ncol = 2, nrow = 2,cut,color,clarity)
+```
+
+
+### Outliers analysis
+
+Let us explore the boxplots for numerical attributes:
+
+```{r boxplots}
+price <- ggplot(data = dsDiamonds) + geom_boxplot(aes(y = price)) + labs_pubr() + theme_minimal()
+carat <- ggplot(data = dsDiamonds) + geom_boxplot(aes(y = carat)) + labs_pubr() + theme_minimal()
+x <- ggplot(data = dsDiamonds) + geom_boxplot(aes(y = x)) + labs_pubr() + theme_minimal()
+y <- ggplot(data = dsDiamonds) + geom_boxplot(aes(y = y)) + labs_pubr() + theme_minimal()
+z <- ggplot(data = dsDiamonds) + geom_boxplot(aes(y = z)) + labs_pubr() + theme_minimal()
+depth <- ggplot(data = dsDiamonds) + geom_boxplot(aes(y = depth)) + labs_pubr() + theme_minimal()
+table <- ggplot(data = dsDiamonds) + geom_boxplot(aes(y = table)) + labs_pubr() + theme_minimal()
+ggarrange(ncol = 4, nrow = 3, price,carat,x,y,z,depth,table)
+```
+
+We can see some outliers in all attributes where some very high values stand out of the majority of the observation values for price and carat.
+
+According to diamond specialists*, the diamond price depends on color and clarity graduations besides its cut and carat. Let us explore the price of the diamonds in respect to these attributes:
+
+```{r boxplot_facet}
+price_cut <- ggplot(dsDiamonds, aes(factor(cut), price, fill=cut)) + geom_boxplot() + ggtitle("Price per cut") + xlab("Cut type") + ylab("Price in US$") + coord_cartesian(ylim=c(0,7500))
+price_clarity <- ggplot(dsDiamonds, aes(factor(clarity), price, fill=clarity)) + geom_boxplot() + ggtitle("Price per clarity") + xlab("Clarity") + ylab("Price in US$") + coord_cartesian(ylim=c(0,7500))
+price_carat_color <- ggplot(dsDiamonds, aes(factor(color), (price/carat), fill=color)) + geom_boxplot() + ggtitle("Price per carat and color") + xlab("Color") + ylab("Price per carat in US$")
+ggarrange(ncol = 2, nrow = 2,price_cut,price_clarity,price_carat_color)
+```
+
+https://www.gemsociety.org/article/what-determines-diamond-cost
+
+When analyzing these graphs, we can see some over-estimated prices mostly when considering clarity and carat/color. 
+
+Let us verify if we can have a correlation with carat:
+
+```{r carat_price}
+subset(dsDiamonds,dsDiamonds$carat > 1) %>%
+  count()
+
+subset(dsDiamonds,dsDiamonds$carat > 1 & dsDiamonds$price > 3500) %>%
+  count()
+```
+
+As we can observe by the counts above, the diamond price seems to be strictly related to the carat. Almost all the diamonds with more than 1 carat are above US$ 3,500. As we have seen before, other factors such as cut, clarity and color help composing the final price.
+
+
+
+```{r include=FALSE}
+options(warn = defaultW)
+```
