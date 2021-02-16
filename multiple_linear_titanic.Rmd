@@ -1,0 +1,105 @@
+---
+title: "Applying multiple linear regression on Titanic dataset"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+defaultW <- getOption("warn") 
+options(warn = -1) 
+```
+
+### Applying GLM on reduced Titanic dataset
+
+We will apply Logistics Regression on a reduced Titanic dataset (a reduced one from Kaggle's original).
+
+The training dataset is a data collection about the passengers and the goal is to predict the survival (1 if survived; 0 otherwise) based on some features such as cabin class, sex, age, etc. The test dataset has the same structure but **survived** attribute has no value.
+
+After building the model, we will apply it to the test dataset in order to predict the **survived** values.
+
+As we can see, we will use both categorical and numerical attributes. While working on an dataset, we have to take on account missing or corrupted data and hence we need to pre-process the dataset.
+
+The tasks are:
+
+    a) Data preparation with a subset of attributes
+    
+```{r titanic training}
+library(data.table)
+library(dplyr)
+
+titanic.train <- fread("C:\\Users\\dougl\\Documents\\DOUGLAS\\Data_Scientist\\data\\titanic_train.csv", 
+                    select = c("PassengerId","Survived","Pclass","Sex","Age","SibSp","Parch","Fare","Embarked"))
+summary(titanic.train)
+
+```
+
+As per summary, we can see some observations with *Age* having "NA".
+
+    b) Replacing the NA's with mean. A better method could be applied such as KNN
+
+```{r titanic age}
+titanic.train$Age <- ifelse(is.na(titanic.train$Age), mean(titanic.train$Age, na.rm = TRUE), titanic.train$Age)
+
+summary(titanic.train)
+
+sapply(titanic.train[,c(2:4,6:7,9)], table)
+```
+
+
+    c) Removing lines with missing "embarked" 
+    
+```{r titanic embarked}
+titanic.train <- subset(titanic.train, titanic.train$Embarked != "")
+
+summary(titanic.train)
+
+sapply(titanic.train[,c(2:4,6:7,9)], table)
+
+```    
+
+    d) Creating a model where **Survived** is a function of the other attributes
+
+```{r train full}
+fit.full <- glm(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = titanic.train, family = binomial())
+summary(fit.full)
+
+```
+
+    e) As per the model summary, we can see that *Pclass, Sex, Age* and *SibSp* have statistical significance and hence we have to reject the null hypothesis that your coefficients are zero. The other attributes are irrelevant and can be removed from the model
+
+
+```{r train reduced}
+fit.reduced <- glm(Survived ~ Pclass + Sex + Age + SibSp, data = titanic.train, family = binomial())
+summary(fit.reduced)
+
+```
+
+    f) Performing prediction for Survived on test dataset with the refined model and saving a CSV with passId and Survived 
+    
+    
+```{r titanic test}
+titanic.test <- fread("C:\\Users\\dougl\\Documents\\DOUGLAS\\Data_Scientist\\data\\titanic_test.csv",
+                      select = c("PassengerId","Pclass","Sex","Age","SibSp","Parch","Fare","Embarked"))
+
+summary(titanic.test)
+
+titanic.test$Age <- ifelse(is.na(titanic.test$Age), mean(titanic.test$Age, na.rm = TRUE), titanic.test$Age)
+
+titanic.test$Survived <- predict(fit.reduced, newdata = titanic.test, type = "response")
+titanic.test$Survived <- ifelse(titanic.test$Survived < 0.5, 0, 1)
+table(titanic.test$Survived)
+
+titanic.result <- select(titanic.test, PassengerId, Survived)
+
+write.csv(x = titanic.result, file = "C:\\Users\\dougl\\Documents\\DOUGLAS\\Data_Scientist\\data\\titanic_result.csv")
+
+```
+
+
+
+```{r include=FALSE}
+options(warn = defaultW)
+```
