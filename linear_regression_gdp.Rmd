@@ -1,0 +1,143 @@
+---
+title: "Linear Regression"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+defaultW <- getOption("warn") 
+options(warn = -1) 
+```
+
+### Linear Regression on GDP dataset
+
+The site Gapminder compiled a dataset with population, life expectancy and GDP per capita of 142 countries over 12 years. Let us analyze the data.
+
+Importing data:
+
+```{r import_data_2}
+gdp = read.csv2("C:\\Users\\dougl\\Documents\\DOUGLAS\\Data_Scientist\\data\\gdp_gapminder.csv", sep = ",", header = TRUE)
+```
+
+Checking the data structure:
+
+```{r str_data_2}
+str(gdp)
+
+library(dplyr)
+
+gdp = gdp %>% mutate(pop = as.double(pop), expLife = as.integer(expLife), gdpPercap = as.numeric(gdpPercap))
+
+```
+
+Data summary:
+
+```{r summary_data_2}
+summary(gdp)
+```
+
+Tables with absolute and relative frequency of observations per continent:
+
+    i) Absolute frequency
+
+```{r absolut_data_2}
+cont_abs <- data.frame(table(gdp$continent))
+cont_abs
+```
+
+    ii) Relative frequency
+
+```{r relative_data_2}
+cont_rel <- data.frame(round(table(gdp$continent)/length(gdp$continent),2)*100)
+cont_rel
+```
+
+Bar chart with absolute frequency of continents:
+
+```{r abs_bar_data_2}
+library(ggplot2)
+library(ggpubr)
+ggplot(gdp, aes(x=continent, fill=continent)) + geom_bar() + ylab("Frequency")
+```
+
+Graph correlating GDP per capita with life expectancy:
+
+```{r rel_pib_exp_data_2}
+g <- ggplot(data = gdp, aes(x = expLife, y = gdpPercap, color = continent)) + geom_point() + labs(x = "Life Expectancy", y = "GDP per Capita")
+g
+```
+
+Creating 2 new columns in the same dataset with log of GDP per capita and log of Life expectancy:
+
+```{r logs_data_2}
+library(plm)
+
+lgdpPercap <- log(gdp$gdpPercap)
+lexpLife <- log(gdp$expLife)
+gdp["lgdpPercap"] <- lgdpPercap
+gdp["lexpLife"] <- lexpLife
+str(gdp)
+```
+
+Graph correlating these 2 new attributes:
+
+```{r rel_logs_data_2}
+g <- ggplot(data = gdp, aes(x = lexpLife, y = lgdpPercap, color = continent)) + geom_point() + labs(x = "Life Expectancy", y = "GDP per Capita")
+g
+```
+
+Adjusting a linear model to data by using these 2 new attributes and being lexpLife the dependent variable:
+
+```{r model_logs_data_2}
+X <- gdp$lgdpPercap
+Y <- gdp$lexpLife
+
+model <- lm(Y ~ X, gdp)
+model
+```
+
+Performing the regression analysis:
+
+    i)   Diagnosing graphics
+
+```{r graphs_logs_data_2}
+g <- ggplot(data = gdp, aes(x = X, y = Y)) + geom_point() + xlab("GDP per Capita") + ylab("Life Expectancy")
+g
+
+par(mfrow=c(2,2))
+plot(model)
+```
+
+As per the scatter plots we can see a correlation between life expectancy and GDP per capita but there is no clear linearity.
+
+In the residual x fitted values graph there is a certain residual concentration and a decrease of the same as the adjusted values increase. We can also see that residuals do not follow a normal distribution on Normal Q-Q graph.
+
+    ii) Evaluate model summary
+
+```{r summary_logs_data_2}
+summary(model)
+```
+
+We can observe that both intercept and independent variables have p-values far below the significance level of 0.05 and hence we can **reject** the null hypothesis that coefficients are equals to zero.
+
+    iii) Explanatory power of the model
+
+The multiple R squared indicates that our model explains 61.3% of the target attribute variance. Hence the model could be enhanced.
+
+```{r histogram_logs_data_2}
+model.df <- as.data.frame(residuals(model))
+names(model.df) <- c("residuals")
+g <- ggplot(data = model.df, aes(residuals)) + 
+  geom_histogram(fill="#aabbee",color = "blue",stat = "bin", bins = 5) + 
+  theme_pubr() + labs_pubr() + xlab("Residuals") + ylab("Frequency") +  
+  theme(plot.caption = element_text(hjust = 0)) + 
+  labs(caption = "Source: Elaborated by the author" )
+g
+```
+
+```{r include=FALSE}
+options(warn = defaultW)
+```
